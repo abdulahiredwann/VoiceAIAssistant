@@ -1,252 +1,162 @@
-# Voice AI Assistant - Real-Time Voice Support System
+# Voice AI Assistant
 
-A real-time voice AI assistant that helps users create support tickets through natural voice conversations. Built with React, Node.js, WebSocket, and Web Speech API.
+A real-time voice AI assistant for support ticket creation using **Web Speech API + Groq + Browser TTS**.
 
 ## 🎯 Features
 
-- **Real-time Voice Interaction**: Speak naturally to create support tickets
-- **Low Latency**: Text-based WebSocket communication for fast responses
-- **Conversation Flow**: Guided conversation to collect product, issue, and urgency
-- **Live Transcription**: See what you say in real-time
-- **Browser TTS**: Natural voice responses using browser speech synthesis
-- **Session Management**: Persistent sessions with state tracking
-- **Metrics Logging**: Track voice-to-voice latency and performance
+- **Push-to-talk** voice interface
+- **Real-time conversation** with AI
+- **Low latency** voice-to-voice interaction
+- **No expensive APIs** - uses free browser technologies
+- **WebSocket** real-time communication
 
 ## 🏗️ Architecture
 
 ### Frontend (React + TypeScript)
 
-- **Speech Recognition**: Web Speech API for real-time voice-to-text
-- **Text-to-Speech**: Browser SpeechSynthesis API for voice responses
-- **WebSocket Client**: Real-time bidirectional communication
-- **State Management**: React hooks for conversation state
+- **Web Speech API** - Browser native speech-to-text
+- **Browser TTS** - Built-in text-to-speech
+- **WebSocket** - Real-time communication
+- **Tailwind CSS** - Modern UI
 
-### Backend (Node.js + Express + WebSocket)
+### Backend (Node.js + Express)
 
-- **Express Server**: REST API endpoints for session management
-- **WebSocket Server**: Real-time text communication
-- **Conversation State Machine**: Manages ticket creation flow
-- **Hardcoded Responses**: Smart responses based on conversation context (ready for LLM integration)
+- **WebSocket server** - Real-time audio streaming
+- **Groq API** - Free LLM integration
+- **Session management** - Track conversations
+- **REST API** - Session initialization
 
-### Communication Flow
+## 📁 Project Structure
 
 ```
-User Speech → Web Speech API → Text → WebSocket → Server
-Server → Process → Generate Response → WebSocket → Text → Browser TTS → Voice
+VoiceAIAssistant/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── VoiceTalk/     # Main voice component
+│   │   └── App.tsx        # Root component
+│   └── package.json
+├── server/                 # Node.js backend
+│   ├── services/
+│   │   └── groq.service.js # Groq LLM integration
+│   ├── Controller/
+│   │   └── Voice.controller.js # Voice logic
+│   ├── routes/
+│   │   └── voice.routes.js # API routes
+│   ├── index.js           # Main server
+│   └── package.json
+└── README.md
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js (v18 or higher)
-- npm or yarn
-- Modern browser (Chrome recommended for best speech recognition)
-
-### Installation
-
-1. **Clone the repository**
-
-```bash
-cd VoiceAIAssistant
-```
-
-2. **Install Backend Dependencies**
+### 1. Setup Backend
 
 ```bash
 cd server
 npm install
 ```
 
-3. **Install Frontend Dependencies**
+### 2. Add Groq API Key
 
-```bash
-cd ../client
-npm install
+Create `server/.env`:
+
+```
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-### Running the Application
-
-1. **Start Backend Server** (Terminal 1)
+### 3. Start Backend
 
 ```bash
 cd server
 npm run dev
 ```
 
-Server will run on `http://localhost:3001`
+### 4. Setup Frontend
 
-2. **Start Frontend** (Terminal 2)
+```bash
+cd client
+npm install
+```
+
+### 5. Start Frontend
 
 ```bash
 cd client
 npm run dev
 ```
 
-Frontend will run on `http://localhost:5173`
+### 6. Open Browser
 
-3. **Open Browser**
+Go to `http://localhost:3000`
 
-- Navigate to `http://localhost:5173`
-- Click "Start Voice Chat"
-- Allow microphone permissions
-- Start speaking!
+## 💰 Cost-Free Technologies
 
-## 📋 Conversation Flow
+- **Web Speech API** - Free browser speech recognition
+- **Browser TTS** - Free text-to-speech
+- **Groq API** - Free LLM with generous limits
+- **WebSocket** - Free real-time communication
 
-The assistant guides you through creating a support ticket:
+## 🎤 How It Works
 
-1. **Greeting**: "Hi, I'm your support assistant. What product are you calling about today?"
-2. **Product Collection**: User mentions "mobile app" or "website"
-3. **Issue Collection**: "What specific problem are you experiencing?"
-4. **Urgency Collection**: "How urgent is this? (low/medium/high)"
-5. **Confirmation**: "I've created ticket #T-1234. Should I submit this now?"
-6. **Completion**: "Perfect! Your ticket has been submitted."
+1. **Start Session** - Click "Start Voice Chat"
+2. **Push to Talk** - Hold Space or click button
+3. **Speak** - Your voice is transcribed
+4. **AI Response** - Groq generates response
+5. **Voice Output** - Browser speaks the response
 
-## 🔧 API Endpoints
+## 🔧 Tech Stack
 
-### REST Endpoints
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **Backend**: Node.js, Express, WebSocket
+- **AI**: Groq (free LLM)
+- **Voice**: Web Speech API + Browser TTS
+- **Real-time**: WebSocket communication
 
-- `POST /api/voice/session` - Create new voice session
+## 📝 API Endpoints
 
-  - Response: `{ sessionId, wsUrl, token, status }`
+- `POST /api/voice/session` - Create voice session
+- `WebSocket /ws/voice/:sessionId` - Real-time communication
 
-- `GET /api/voice/session/:sessionId` - Get session details
+## 🎯 Voice Flow
 
-  - Response: Session state, context, metrics
+1. User clicks "Start Voice Chat"
+2. Frontend creates session with backend
+3. WebSocket connection established
+4. User speaks → Web Speech API transcribes
+5. Text sent to backend via WebSocket
+6. Groq generates AI response
+7. Backend sends response to frontend
+8. Browser TTS speaks the response
 
-- `POST /api/voice/metrics` - Log performance metrics
+## 🚀 Commands
 
-  - Body: `{ sessionId, latencyMs, processingSteps }`
+```bash
+# Start everything
+npm run dev
 
-- `DELETE /api/voice/session/:sessionId` - End session
-
-- `GET /health` - Health check
-
-### WebSocket Messages
-
-**Client → Server:**
-
-```json
-{
-  "type": "text",
-  "data": {
-    "text": "user speech transcript",
-    "timestamp": "2024-01-01T00:00:00.000Z"
-  }
-}
+# Or start separately
+cd server && npm run dev
+cd client && npm run dev
 ```
 
-**Server → Client:**
+## 📱 Browser Support
 
-```json
-{
-  "type": "response",
-  "data": {
-    "text": "assistant response",
-    "state": "collecting_issue",
-    "timestamp": "2024-01-01T00:00:00.000Z"
-  }
-}
+- ✅ Chrome/Edge (full support)
+- ✅ Firefox (full support)
+- ✅ Safari (full support)
+
+## 🔑 Environment Variables
+
+```bash
+# server/.env
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-## 📊 Session State Machine
+## 🎨 Features
 
-```
-greeting → collecting_product → collecting_issue → collecting_urgency → confirming → complete
-```
-
-Each state tracks context:
-
-- `product`: mobile app, website, etc.
-- `issue`: User's problem description
-- `urgency`: low, medium, high
-- `ticketId`: Generated ticket number
-
-## 🎨 Frontend Components
-
-### VoiceTalk Component
-
-- **Push-to-Talk Button**: Large, color-coded button for voice interaction
-- **Conversation Log**: Chat-style display of conversation history
-- **Status Indicators**: Voice state, connection status, session ID
-- **Error Handling**: User-friendly error messages
-
-### Voice States
-
-- `idle` - Blue button, ready to listen
-- `listening` - Red pulsing, recording user speech
-- `processing` - Yellow spinning, sending to server
-- `speaking` - Green, playing assistant response
-- `error` - Red, showing error message
-
-## 🔒 Security Considerations
-
-- WebSocket connections validated with session IDs
-- CORS enabled for local development
-- No sensitive data in logs
-- Session-based isolation
-
-## 🚧 Next Steps (LLM Integration)
-
-The current implementation uses hardcoded responses. To integrate with Groq or other LLMs:
-
-1. Add Groq API key to environment variables
-2. Update `Voice.controller.js` to call Groq API
-3. Replace hardcoded responses with LLM-generated responses
-4. Add conversation history to LLM prompts
-5. Implement streaming responses for lower latency
-
-## 📈 Performance Metrics
-
-The system logs:
-
-- Voice-to-voice latency
-- Processing time per step
-- Session duration
-- Turn count per conversation
-
-## 🐛 Troubleshooting
-
-### Speech Recognition Not Working
-
-- Use Chrome browser (best support)
-- Allow microphone permissions
-- Check if on HTTPS (required for speech recognition)
-
-### TTS Not Working
-
-- Check browser console for errors
-- Try "Replay Greeting" button
-- Ensure audio is not muted
-
-### WebSocket Connection Failed
-
-- Ensure backend server is running on port 3001
-- Check console for connection errors
-- Verify CORS settings
-
-## 🛠️ Tech Stack
-
-**Frontend:**
-
-- React 19
-- TypeScript
-- Tailwind CSS
-- Web Speech API
-- WebSocket API
-
-**Backend:**
-
-- Node.js
-- Express
-- ws (WebSocket library)
-- UUID
-
-## 📝 License
-
-MIT
-
-## 👥 Contributing
-
-This is a demo project for voice AI integration. Feel free to fork and modify!
+- **Real-time voice interaction**
+- **Session-based conversations**
+- **Low latency communication**
+- **Free to use** (no expensive APIs)
+- **Modern UI** with Tailwind CSS
+- **WebSocket** real-time streaming
