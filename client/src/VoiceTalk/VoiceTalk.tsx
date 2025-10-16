@@ -438,7 +438,7 @@ function VoiceTalk() {
               }}
               className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xl px-12 py-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300"
             >
-              🎤 Start Voice Chat
+              Start Voice Chat
             </button>
             <p className="text-gray-600 mt-4 text-sm">
               Click to begin your conversation with the support assistant
@@ -516,69 +516,6 @@ function VoiceTalk() {
             {error}
           </div>
         )}
-
-        <div className="text-sm text-gray-500">
-          <p>
-            State:{" "}
-            <span className="font-semibold capitalize">{voiceState}</span>
-          </p>
-          <p className="text-xs mt-1">
-            Speech Synthesis:{" "}
-            {"speechSynthesis" in window ? "✅ Available" : "❌ Not Available"}
-          </p>
-          <p className="text-xs">
-            Microphone:{" "}
-            {navigator.mediaDevices ? "✅ Available" : "❌ Not Available"}
-          </p>
-          <p className="text-xs">
-            Server: {isConnected ? "✅ Connected" : "❌ Not Connected"}
-          </p>
-          {sessionId && (
-            <p className="text-xs">Session: {sessionId.substring(0, 8)}...</p>
-          )}
-        </div>
-
-        <div className="mt-6 space-y-2">
-          <div className="flex gap-2">
-            <button
-              onClick={speakGreeting}
-              className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Replay Greeting
-            </button>
-
-            <button
-              onClick={() => {
-                // Simple fallback - try with very basic settings
-                if ("speechSynthesis" in window) {
-                  speechSynthesis.cancel();
-                  const utterance = new SpeechSynthesisUtterance(
-                    "Hi, I'm your support assistant. What product are you calling about today?"
-                  );
-                  utterance.onstart = () => setVoiceState("speaking");
-                  utterance.onend = () => setVoiceState("idle");
-                  utterance.onerror = () => setVoiceState("error");
-                  speechSynthesis.speak(utterance);
-                }
-              }}
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Try Simple TTS
-            </button>
-          </div>
-
-          {voiceState === "error" && (
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded text-sm">
-              <p className="font-semibold">
-                Fallback: Read the greeting below:
-              </p>
-              <p className="mt-1 italic">
-                "Hi, I'm your support assistant. What product are you calling
-                about today?"
-              </p>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
