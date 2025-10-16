@@ -21,7 +21,7 @@ export class GroqService {
     try {
       const messages = [
         { role: "system", content: SYSTEM_PROMPT },
-        ...conversationHistory
+        ...conversationHistory,
       ];
 
       const completion = await groq.chat.completions.create({
@@ -33,7 +33,10 @@ export class GroqService {
         stream: false,
       });
 
-      return completion.choices[0]?.message?.content || "I understand. Can you tell me more?";
+      return (
+        completion.choices[0]?.message?.content ||
+        "I understand. Can you tell me more?"
+      );
     } catch (error) {
       console.error("Error calling Groq API:", error);
       throw new Error("Failed to generate AI response");
