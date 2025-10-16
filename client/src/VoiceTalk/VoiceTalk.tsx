@@ -21,6 +21,131 @@ function VoiceTalk() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognitionRef = useRef<any | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Initialize session and WebSocket connection
+  const initializeSession = async () => {
+    try {
+      console.log("Initializing voice session...");
+
+      // Create session
+      const response = await fetch("http://localhost:3001/api/voice/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create session");
+      }
+
+      const data = await response.json();
+      console.log("Session created:", data);
+
+      setSessionId(data.sessionId);
+
+      // Connect to WebSocket
+      connectWebSocket(data.wsUrl);
+
+      return data;
+    } catch (err) {
+      console.error("Error initializing session:", err);
+      setError("Failed to initialize voice session");
+      throw err;
+    }
+  };
+
+  // Connect to WebSocket
+  const connectWebSocket = (wsUrl: string) => {
+    try {
+      console.log("Connecting to WebSocket:", wsUrl);
+
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        setIsConnected(true);
+        setError(null);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log("Received message from server:", message);
+
+          if (message.type === "response") {
+            handleServerResponse(message.data);
+          }
+        } catch (err) {
+          console.error("Error parsing message:", err);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setError("WebSocket connection error");
+        setIsConnected(false);
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket disconnected");
+        setIsConnected(false);
+      };
+    } catch (err) {
+      console.error("Error connecting to WebSocket:", err);
+      setError("Failed to connect to server");
+    }
+  };
+
+  // Handle response from server
+  const handleServerResponse = (data: any) => {
+    console.log("Processing server response:", data);
+
+    // Add assistant response to conversation log
+    setConversationLog((prev) => [
+      ...prev,
+      {
+        speaker: "assistant",
+        text: data.text,
+        timestamp: new Date(),
+      },
+    ]);
+
+    // Speak the response
+    const responseUtterance = new SpeechSynthesisUtterance(data.text);
+    responseUtterance.onstart = () => setVoiceState("speaking");
+    responseUtterance.onend = () => setVoiceState("idle");
+    responseUtterance.onerror = () => {
+      setVoiceState("idle");
+      console.error("TTS error for server response");
+    };
+
+    speechSynthesis.speak(responseUtterance);
+  };
+
+  // Send text to server via WebSocket
+  const sendTextToServer = (text: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      console.error("WebSocket not connected");
+      setError("Not connected to server");
+      return;
+    }
+
+    const message = {
+      type: "text",
+      data: {
+        text: text,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    console.log("Sending to server:", message);
+    wsRef.current.send(JSON.stringify(message));
+  };
 
   // Browser TTS for greeting message - simplified approach
   const speakGreeting = () => {
@@ -85,23 +210,6 @@ function VoiceTalk() {
     }
   };
 
-  // Generate assistant response based on user input
-  const generateAssistantResponse = (userInput: string) => {
-    const input = userInput.toLowerCase();
-
-    if (input.includes("mobile app") || input.includes("app")) {
-      return "I understand you're having issues with the mobile app. Can you tell me more about what's happening?";
-    } else if (input.includes("website") || input.includes("web")) {
-      return "I see you're having problems with the website. What specific issues are you experiencing?";
-    } else if (input.includes("login") || input.includes("password")) {
-      return "It sounds like you're having trouble logging in. Are you getting any error messages?";
-    } else if (input.includes("payment") || input.includes("billing")) {
-      return "I can help with payment and billing issues. What exactly is the problem?";
-    } else {
-      return "I understand. Can you provide more details about the issue you're experiencing?";
-    }
-  };
-
   // Start speech recognition
   const startRecording = () => {
     try {
@@ -145,28 +253,8 @@ function VoiceTalk() {
 
         setVoiceState("processing");
 
-        // Generate and speak assistant response
-        setTimeout(() => {
-          const assistantResponse = generateAssistantResponse(transcript);
-
-          // Add assistant response to conversation log
-          setConversationLog((prev) => [
-            ...prev,
-            {
-              speaker: "assistant",
-              text: assistantResponse,
-              timestamp: new Date(),
-            },
-          ]);
-
-          // Speak the response
-          const responseUtterance = new SpeechSynthesisUtterance(
-            assistantResponse
-          );
-          responseUtterance.onstart = () => setVoiceState("speaking");
-          responseUtterance.onend = () => setVoiceState("idle");
-          speechSynthesis.speak(responseUtterance);
-        }, 1000);
+        // Send user input to server via WebSocket
+        sendTextToServer(transcript);
       };
 
       recognition.onerror = (event: any) => {
@@ -279,6 +367,19 @@ function VoiceTalk() {
     }
   }, []);
 
+  // Cleanup WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) {
+        console.log("Closing WebSocket connection");
+        wsRef.current.close();
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
   const getButtonText = () => {
     switch (voiceState) {
       case "idle":
@@ -326,9 +427,14 @@ function VoiceTalk() {
         {!conversationStarted ? (
           <div className="mb-8">
             <button
-              onClick={() => {
-                setConversationStarted(true);
-                speakGreeting();
+              onClick={async () => {
+                try {
+                  await initializeSession();
+                  setConversationStarted(true);
+                  speakGreeting();
+                } catch (err) {
+                  console.error("Failed to start conversation:", err);
+                }
               }}
               className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xl px-12 py-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300"
             >
@@ -337,6 +443,11 @@ function VoiceTalk() {
             <p className="text-gray-600 mt-4 text-sm">
               Click to begin your conversation with the support assistant
             </p>
+            {isConnected && (
+              <p className="text-green-600 text-xs mt-2">
+                ✅ Connected to server
+              </p>
+            )}
           </div>
         ) : (
           <div className="mb-8">
@@ -419,6 +530,12 @@ function VoiceTalk() {
             Microphone:{" "}
             {navigator.mediaDevices ? "✅ Available" : "❌ Not Available"}
           </p>
+          <p className="text-xs">
+            Server: {isConnected ? "✅ Connected" : "❌ Not Connected"}
+          </p>
+          {sessionId && (
+            <p className="text-xs">Session: {sessionId.substring(0, 8)}...</p>
+          )}
         </div>
 
         <div className="mt-6 space-y-2">
